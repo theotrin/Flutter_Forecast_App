@@ -1,4 +1,8 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_forecast/models/weather.dart';
+import 'package:http/http.dart' as http;
 
 class WellcomeScreen extends StatefulWidget {
   const WellcomeScreen({super.key});
@@ -40,6 +44,24 @@ class _WellcomeScreenState extends State<WellcomeScreen> {
 
   String? selectedState;
   String? selectedStateAbbreviation;
+  String? city_name;
+  bool result = false;
+  Weather? weatherResponse = Weather.defaultValues();
+
+  Future<Weather> fetchWeather() async {
+    final response = await http.get(Uri.parse(
+        'https://api.hgbrasil.com/weather?key=8799492e&city_name=$city_name,$selectedStateAbbreviation'));
+
+    if (response.statusCode == 200) {
+      // If the server did return a 200 OK response,
+      // then parse the JSON.
+      final jsonData = json.decode(response.body);
+      return Weather.fromJson(jsonData);
+    } else {
+      throw Exception('Failed to load weather data');
+      weatherResponse = Weather.defaultValues();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -57,6 +79,7 @@ class _WellcomeScreenState extends State<WellcomeScreen> {
                   labelText: 'City name',
                   hintText: 'Curitiba / São Paulo',
                 ),
+                onChanged: (value) => city_name = value,
               ),
               SizedBox(height: 20), // Spacing between fields
               DropdownButtonFormField<String>(
@@ -81,13 +104,44 @@ class _WellcomeScreenState extends State<WellcomeScreen> {
                 },
               ),
               SizedBox(height: 20),
-              if (selectedStateAbbreviation != null)
-                Text(
-                  'Selected State Abbreviation: $selectedStateAbbreviation',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              if (result != false)
+                Column(
+                  children: [
+                    Text(
+                      'City Name: ${this.weatherResponse?.cityName}\nDescription: ${this.weatherResponse?.description}\nHumidity: ${this.weatherResponse?.humidity}%\nWind speed: ${this.weatherResponse?.windSpeedy}',
+                      style:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        SizedBox(
+                          height: 80,
+                        ),
+                        Text(
+                          'Max: ${this.weatherResponse?.forecast[0].max}°',
+                          style: TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                        SizedBox(width: 20),
+                        Text(
+                          'Min: ${this.weatherResponse?.forecast[0].min}°',
+                          style: TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.bold),
+                        )
+                      ],
+                    ),
+                  ],
                 ),
+
               TextButton(
-                  onPressed: () {},
+                  onPressed: () async {
+                    //Album albumResponse = await fetchAlbum();
+                    weatherResponse = await fetchWeather();
+                    setState(() {
+                      result = true;
+                    });
+                  },
                   style: ButtonStyle(
                     backgroundColor:
                         WidgetStateProperty.all<Color>(Colors.blue),
@@ -96,7 +150,7 @@ class _WellcomeScreenState extends State<WellcomeScreen> {
                     padding: WidgetStateProperty.all<EdgeInsets>(
                         EdgeInsets.only(left: 30, right: 30)),
                   ),
-                  child: Text('Button'))
+                  child: Text('View forecast!'))
             ],
           ),
         ),
